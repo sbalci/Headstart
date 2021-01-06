@@ -9,7 +9,6 @@ import { scale } from './scale';
 import { streamgraph } from 'streamgraph';
 import Intermediate from './intermediate';
 
-const multiplesTemplate = require('templates/multiples.handlebars');
 const headstartTemplate = require("templates/headstart.handlebars");
 const infoTemplate = require("templates/modals/info_modal.handlebars");
 const iFrameTemplate = require("templates/modals/iframe_modal.handlebars");
@@ -45,7 +44,20 @@ var MyMediator = function() {
     this.mediator = new Mediator();
     this.manager = new ModuleManager();
     this.modern_frontend_enabled = config.modern_frontend_enabled
-    this.modern_frontend_intermediate = new Intermediate(this.modern_frontend_enabled, this.chart_svg_click, this.streamgraph_chart_clicked)
+    this.modern_frontend_intermediate = new Intermediate(
+        this.modern_frontend_enabled, 
+        this.chart_svg_click, 
+        this.streamgraph_chart_clicked, 
+        this.list_toggle, 
+        this.list_search_change,
+        this.list_filter_change,
+        this.list_click_area,
+        this.list_area_mouseover,
+        this.list_area_mouseout,
+        this.list_show_popup,
+        this.list_click_paper_list,
+        this.currentstream_click,
+    );
     this.init();
     this.init_state();
 };
@@ -78,8 +90,6 @@ MyMediator.prototype = {
         // list
         this.mediator.subscribe("list_toggle", this.list_toggle);
         this.mediator.subscribe("list_show_popup", this.list_show_popup);
-        this.mediator.subscribe("list_title_click", this.list_title_click);
-        this.mediator.subscribe("list_title_clickable", this.list_title_clickable);
         this.mediator.subscribe("preview_mouseover", this.preview_mouseover);
         this.mediator.subscribe("preview_mouseout", this.preview_mouseout);
         this.mediator.subscribe("list_click_paper_list", this.list_click_paper_list);
@@ -105,8 +115,6 @@ MyMediator.prototype = {
         this.mediator.subscribe("bubbles_update_data_and_areas", this.bubbles_update_data_and_areas);
         this.mediator.subscribe("bubble_zoomin", this.bubble_zoomin);
         this.mediator.subscribe("bubble_zoomout", this.bubble_zoomout);
-        this.mediator.subscribe("zoomout_complete", this.zoomout_complete);
-        this.mediator.subscribe("zoomin_complete", this.zoomin_complete);
 
         // misc
         this.mediator.subscribe("record_action", this.record_action);
@@ -118,7 +126,7 @@ MyMediator.prototype = {
         this.mediator.subscribe("on_rect_mouseover", this.on_rect_mouseover);
         this.mediator.subscribe("on_rect_mouseout", this.on_rect_mouseout);
         this.mediator.subscribe("chart_svg_click", this.chart_svg_click);
-        this.mediator.subscribe("draw_title", this.draw_title);
+        this.mediator.subscribe("draw_modals", this.draw_modals);
 
         // needed in io.js = prepareData and prepareAreas to
         // delegate some things to the canvas class
@@ -137,7 +145,7 @@ MyMediator.prototype = {
         this.mediator.subscribe("streamgraph_chart_clicked", this.streamgraph_chart_clicked)
 
         // refactor
-        this.mediator.subscribe("register_zoomout_callback", this.register_zoomout_callback)
+        this.mediator.subscribe("list_height_change", this.list_height_change)
     },
 
     init_state: function() {
@@ -171,7 +179,11 @@ MyMediator.prototype = {
     },
 
     init_modern_frontend_intermediate: function() {
-        mediator.modern_frontend_intermediate.init(config, io.context);
+        mediator.modern_frontend_intermediate.init(config, io.context, io.data);
+    },
+
+    render_modern_frontend_list: function() {
+        mediator.modern_frontend_intermediate.renderList();
     },
 
     register_bubbles: function() {
@@ -229,12 +241,7 @@ MyMediator.prototype = {
         mediator.external_vis_url = config.external_vis_url + "?vis_id=" + config.files[mediator.current_file_number].file
         papers.current = "none";
         list.current = "none";
-        $("#list_explorer").empty();
-        if (mediator.modern_frontend_enabled) {
-            mediator.modern_frontend_intermediate.zoomOut();
-        } else {
-            $("#backlink").remove();
-        }
+        mediator.modern_frontend_intermediate.zoomOut();
         mediator.manager.call('canvas', 'setupToFileCanvas', []);
     },
 
@@ -244,8 +251,6 @@ MyMediator.prototype = {
         mediator.current_bubble.current = "x";
         papers.current = "none";
         list.current = "none";
-        // clear the list list
-        $("#list_explorer").empty();
         mediator.manager.call('canvas', 'setupMultiplesCanvas', []);
     },
 
@@ -287,19 +292,40 @@ MyMediator.prototype = {
         mediator.streamgraph_data = (config.is_streamgraph)?(csv.streamgraph):{};
         
         mediator.manager.registerModule(window.headstartInstance, 'headstart');
+
+        mediator.manager.call('io', 'initializeMissingData', [data]);
+        mediator.manager.call('io', 'prepareData', [highlight_data, data, context]);
+        mediator.manager.call('io', 'setContext', [context, data.length]);
+        mediator.manager.call('io', 'setInfo', [context]);
+
+        mediator.init_modern_frontend_intermediate();
         
-        if(config.is_streamgraph) {         
+        if (config.is_streamgraph) {         
             mediator.manager.call('canvas', 'setupStreamgraphCanvas', []);
+        } else {
+            if (config.is_force_papers && config.dynamic_force_papers) 
+                mediator.manager.call('headstart', 'dynamicForcePapers', [data.length]);
+            if (config.is_force_area && config.dynamic_force_area) 
+                mediator.manager.call('headstart', 'dynamicForceAreas', [data.length]);
+            if (config.dynamic_sizing) 
+                mediator.manager.call('headstart', 'dynamicSizing', [data.length]);
+            if (config.render_bubbles) 
+                mediator.manager.registerModule(mediator.current_bubble, 'bubble');
 
-            mediator.manager.call('io', 'initializeMissingData', [data]);
-            mediator.manager.call('io', 'prepareData', [highlight_data, data, context]);
-            mediator.manager.call('io', 'prepareAreas', []);
+            mediator.manager.call('canvas', 'setupCanvas', []);
+            if (config.scale_toolbar) {
+                mediator.manager.registerModule(scale, 'scale');
+                mediator.manager.call('scale', 'drawScaleTypes', []);
+            }
+        }
 
-            mediator.manager.call('io', 'setContext', [context, data.length]);
-            mediator.manager.call('io', 'setInfo', [context]);
-            mediator.manager.call('canvas', 'drawTitle', [context]);
-            mediator.bubbles_update_data_and_areas(mediator.current_bubble);
-            
+        mediator.manager.call('io', 'prepareAreas', []);
+        mediator.manager.call('io', 'updateVis', []);
+        
+        mediator.manager.call('canvas', 'drawModals', [context]);
+        mediator.bubbles_update_data_and_areas(mediator.current_bubble);
+
+        if (config.is_streamgraph) {
             mediator.manager.registerModule(streamgraph, 'streamgraph')
             mediator.manager.call('streamgraph', 'start')
             mediator.manager.call('streamgraph', 'setupStreamgraph', [mediator.streamgraph_data])
@@ -307,45 +333,26 @@ MyMediator.prototype = {
             mediator.manager.call('canvas', 'initEventsStreamgraph', []);
             
             mediator.manager.call('list', 'start');
-            if (config.show_list) mediator.manager.call('list', 'show');
+            if (config.show_list) mediator.list_show();
             
             mediator.manager.call('streamgraph', 'initMouseListeners', []);
             
         } else {
-            if(config.is_force_papers && config.dynamic_force_papers) mediator.manager.call('headstart', 'dynamicForcePapers', [data.length]);
-            if(config.is_force_area && config.dynamic_force_area) mediator.manager.call('headstart', 'dynamicForceAreas', [data.length]);
-            if(config.dynamic_sizing) mediator.manager.call('headstart', 'dynamicSizing', [data.length]);
-            if (config.render_bubbles) mediator.manager.registerModule(mediator.current_bubble, 'bubble');
-
-            mediator.manager.call('canvas', 'setupCanvas', []);
-            if(config.scale_toolbar) {
-                mediator.manager.registerModule(scale, 'scale')
-                mediator.manager.call('scale', 'drawScaleTypes', [])
-            }
-
-
-            mediator.manager.call('io', 'initializeMissingData', [data]);
-            mediator.manager.call('io', 'prepareData', [highlight_data, data, context]);
-            mediator.manager.call('io', 'prepareAreas', []);
-
-            mediator.manager.call('io', 'setContext', [context, data.length]);
-            mediator.manager.call('io', 'setInfo', [context]);
-            mediator.manager.call('canvas', 'drawTitle', [context]);
-
-            mediator.bubbles_update_data_and_areas(mediator.current_bubble);
             mediator.manager.call('bubble', 'start', [data, highlight_data]);
             mediator.manager.call('canvas', 'initEventsAndLayout', []);
             mediator.manager.call('papers', 'start', [ mediator.current_bubble ]);
             mediator.manager.call('bubble', 'draw', []);
+
             mediator.manager.call('list', 'start');
-            if (!config.render_bubbles && config.show_list) mediator.manager.call('list', 'show');
+            if (!config.render_bubbles && config.show_list) mediator.list_show();
+
             mediator.manager.call('canvas', 'checkForcePapers', []);
             mediator.manager.call('canvas', 'hyphenateAreaTitles', []);
             mediator.manager.call('canvas', 'dotdotdotAreaTitles', []);
             mediator.manager.call('bubble', 'initMouseListeners', []);
         }
 
-        mediator.init_modern_frontend_intermediate();
+        mediator.render_modern_frontend_list();
 
         mediator.manager.call('canvas', 'showInfoModal', []);
     },
@@ -439,21 +446,17 @@ MyMediator.prototype = {
         mediator.manager.call('list', 'toggle', []);
     },
 
+    list_show: function() {
+        mediator.modern_frontend_intermediate.showList();
+        mediator.manager.call('list', 'show', []);
+    },
+
     list_show_popup: function(d) {
         mediator.manager.call('list', 'populateOverlay', [d]);
     },
 
-    list_title_click: function(d) {
-        mediator.manager.call('list', 'title_click', [d]);
-    },
-
-    list_title_clickable: function(d) {
-        mediator.manager.call('list', 'makeTitleClickable', [d]);
-    },
-
     paper_click: function(d) {
         mediator.manager.call('papers', 'paper_click', [d]);
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
     },
 
     paper_mouseover: function(d, holder_div) {
@@ -461,22 +464,14 @@ MyMediator.prototype = {
     },
 
     paper_holder_clicked: function(holder) {
-        mediator.manager.call('list', 'enlargeListItem', [holder]);
         if (mediator.modules.list.current == "hidden") {
-            mediator.manager.call('list', 'show', []);
+            mediator.list_show();
         }
-        mediator.current_enlarged_paper = holder;
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
+        mediator.paper_selected(holder);
     },
 
     paper_current_bubble_clicked: function(area) {
-        mediator.manager.call('list', 'reset', []);
-        mediator.manager.call('list', 'filterListByArea', [area]);
-        if (mediator.current_enlarged_paper) {
-            mediator.current_enlarged_paper.paper_selected = false
-        }
-        mediator.current_enlarged_paper = null;
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
+        mediator.paper_deselected();
     },
     
     stream_clicked: function(d) {
@@ -484,42 +479,28 @@ MyMediator.prototype = {
         let color = d.color;
         
         mediator.current_stream = keyword;
-        mediator.manager.call('list', 'reset', []);
-        mediator.manager.call('list', 'filterListByKeyword', [keyword]);
         mediator.manager.call('list', 'scrollTop', []);
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
         mediator.manager.call('streamgraph', 'markStream', [keyword]);
-        mediator.manager.call('list', 'changeHeaderColor', [color]);
-        mediator.manager.call('canvas', 'showAreaStreamgraph', [keyword])
-        mediator.current_enlarged_paper = null;
-        mediator.modern_frontend_intermediate.zoomIn({title: keyword});
+        mediator.paper_deselected();
+        mediator.modern_frontend_intermediate.zoomIn({title: keyword, color});
     },
     
     currentstream_click: function() {
-        mediator.manager.call('list', 'reset', []);
-        if (mediator.current_stream !== null) {
-            mediator.manager.call('list', 'filterListByKeyword', [mediator.current_stream]);
-        } else {
-            mediator.manager.call('list', 'updateByFiltered', []);
+        if (mediator.current_stream === null) {
             mediator.manager.call('list', 'scrollTop', []);
         }
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
-        mediator.current_enlarged_paper = null;
+        mediator.paper_deselected()
     },
     
     streamgraph_chart_clicked: function() {
         mediator.current_stream = null;
-        mediator.manager.call('list', 'reset', []);
-        mediator.manager.call('list', 'updateByFiltered', []);
         if(mediator.current_enlarged_paper === null)
             mediator.manager.call('list', 'scrollTop', []);
         else
             mediator.manager.call('list', 'scrollToEntry', [mediator.current_enlarged_paper.safe_id]);
         mediator.manager.call('streamgraph', 'reset');
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
-        mediator.manager.call('list', 'resetHeaderColor');
-        mediator.manager.call('canvas', 'removeAreaStreamgraph');
-        mediator.current_enlarged_paper = null;
+        mediator.draw_modals();
+        mediator.paper_deselected();
         mediator.modern_frontend_intermediate.zoomOut();
     },
 
@@ -544,23 +525,10 @@ MyMediator.prototype = {
             d3.selectAll("#paper_visual_distributions").style("display", "block")
         }
 
-        mediator.manager.call('list', 'reset', []);
         mediator.manager.call('list', 'scrollTop', []);
-        if (typeof d != 'undefined') {
-            mediator.manager.call('list', 'updateByFiltered', []);
-            mediator.manager.call('list', 'filterListByAreaURIorArea', [d]);
-        }
-        if (mediator.current_zoom_mode !== null && typeof mediator.current_zoom_mode != 'undefined') {
-            if (typeof d != 'undefined') {
-                mediator.manager.call('list', 'updateByFiltered', []);
-            }
-        }
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
-        mediator.modern_frontend_intermediate.zoomIn({title: d.title});
+        mediator.modern_frontend_intermediate.zoomIn({title: d.title, uri: d.area_uri});
     },
     bubble_zoomout: function() {
-        mediator.manager.call('list', 'reset', []);
-        mediator.manager.call('list', 'updateByFiltered', []);
 
         $("#map-rect").removeClass("zoomed_in").addClass('zoomed_out');
         $("#region.unframed").removeClass("zoomed_in");
@@ -569,24 +537,18 @@ MyMediator.prototype = {
             d3.selectAll("#paper_visual_distributions").style("display", "none")
         }
         
-        if(mediator.current_enlarged_paper === null)
+        if (mediator.current_enlarged_paper === null) {
             mediator.manager.call('list', 'scrollTop', []);
-        else
+        } else {
             mediator.manager.call('list', 'scrollToEntry', [mediator.current_enlarged_paper.safe_id]);
+            mediator.paper_deselected();
+        }
+            
         mediator.modern_frontend_intermediate.zoomOut();
-    },
-    
-    zoomout_complete: function() {
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
-    },
-
-    zoomin_complete: function() {
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
     },
 
     currentbubble_click: function(d) {
         mediator.manager.call('papers', 'currentbubble_click', [d]);
-        mediator.manager.call('list', 'count_visible_items_to_header', []);
     },
 
     bookmark_added: function(d) {
@@ -657,31 +619,27 @@ MyMediator.prototype = {
 
     check_force_papers: function() {
         if (config.show_list) {
-            mediator.manager.call('list', 'show', []);
+            mediator.list_show();
         }
-        mediator.manager.call('list', 'count_visible_items_to_header')
     },
     
-    draw_title: function () {
+    // TODO is this even needed?
+    draw_modals: function () {
         let context = io.context;
-        mediator.manager.call('canvas', 'drawTitle', [context]);
+        mediator.manager.call('canvas', 'drawModals', [context]);
     },
 
     list_click_paper_list: function(d) {
         if(config.is_streamgraph) {
-            mediator.manager.call('list', 'enlargeListItem', [d]);
             mediator.manager.call('list', 'scrollTop', []);
-            mediator.current_enlarged_paper = d;
-            mediator.manager.call('list', 'count_visible_items_to_header')
+            mediator.paper_selected(d);
         } else {
             mediator.manager.call('canvas', 'getCurrentCircle', [d]);
             if(mediator.current_circle) mediator.manager.call('bubble', 'zoomin', [mediator.current_circle.data()[0]])
             mediator.current_bubble.current = "hoverbig";
             mediator.manager.call('papers', 'mouseoverpaper', []);
-            mediator.manager.call('list', 'enlargeListItem', [d]);
-            mediator.current_enlarged_paper = d;
+            mediator.paper_selected(d);
             mediator.manager.call('papers', 'framePaper', [d]);
-            mediator.manager.call('list', 'count_visible_items_to_header')
         }
     },
     
@@ -707,7 +665,6 @@ MyMediator.prototype = {
                 
             }
             mediator.current_bubble.current = "hoverbig";
-            mediator.manager.call('list', 'count_visible_items_to_header')
         }
     },
     
@@ -716,7 +673,6 @@ MyMediator.prototype = {
         
         mediator.manager.call('bubble', 'updateVisualDistributions', [type, context]);
         mediator.manager.call('papers', 'updateVisualDistributions', [type, context]);
-        mediator.manager.call('list', 'updateVisualDistributions', [type, context]);
         
         if(config.cris_legend) {
             mediator.manager.call('scale', 'updateLegend', [type, context]);
@@ -724,6 +680,35 @@ MyMediator.prototype = {
         mediator.manager.call('canvas', 'dotdotdotAreaTitles', []);
     },
 
+    list_search_change: function(text) {
+        mediator.modules.list.filterList(text.split(" "), mediator.modules.list.current_filter_param);
+    },
+
+    list_filter_change: function(filter_option) {
+        mediator.modules.list.current_filter_param = filter_option;
+        mediator.modules.list.filterList(undefined, filter_option);
+    },
+
+    paper_selected: function(paper) {
+        if (mediator.current_enlarged_paper) {
+            mediator.current_enlarged_paper.paper_selected = false;
+        }
+        mediator.current_enlarged_paper = paper;
+        mediator.modern_frontend_intermediate.selectPaper(paper.safe_id);
+    },
+
+    paper_deselected: function() {
+        if (mediator.current_enlarged_paper) {
+            mediator.current_enlarged_paper.paper_selected = false;
+        }
+        mediator.current_enlarged_paper = null;
+
+        mediator.modern_frontend_intermediate.deselectPaper();
+    },
+
+    list_height_change: function(newHeight) {
+        mediator.modern_frontend_intermediate.setListHeight(newHeight);
+    }
 };
 
 export const mediator = new MyMediator();

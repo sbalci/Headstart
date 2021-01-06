@@ -5,8 +5,13 @@ import localizationReducer from "../../js/reducers/localization";
 import queryReducer from "../../js/reducers/query";
 import filesReducer from "../../js/reducers/files";
 import contextLineReducer from "../../js/reducers/contextLine";
+import serviceReducer from "../../js/reducers/service";
+import listReducer from "../../js/reducers/list";
+import dataReducer from "../../js/reducers/data";
 
-const setup = (overrideConfig, overrideContext) => {
+import localData from "../data/local-files";
+
+const setup = (overrideConfig = {}, overrideContext = {}) => {
   const configObject = Object.assign(
     {
       title: "presetTitle",
@@ -57,6 +62,7 @@ const setup = (overrideConfig, overrideContext) => {
           custom_title_explanation: "Sample explanation",
         },
       },
+      service: undefined,
     },
     overrideConfig
   );
@@ -111,16 +117,16 @@ describe("config and context state", () => {
   describe("reducers", () => {
     describe("heading reducer", () => {
       it("should return the initial state", () => {
-        const expectedResult = {};
+        const EXPECTED_RESULT = {};
 
         const result = headingReducer(undefined, {});
 
-        expect(result).toEqual(expectedResult);
+        expect(result).toEqual(EXPECTED_RESULT);
       });
 
       it("should handle the initialization", () => {
         const initialState = {};
-        const expectedResult = {
+        const EXPECTED_RESULT = {
           title: "title",
           acronym: "acronym",
           projectId: "projectId",
@@ -138,12 +144,12 @@ describe("config and context state", () => {
           initializeStore(configObject, contextObject)
         );
 
-        expect(result).toEqual(expectedResult);
+        expect(result).toEqual(EXPECTED_RESULT);
       });
 
       it("should handle the initialization even without context params", () => {
         const initialState = {};
-        const expectedResult = {
+        const EXPECTED_RESULT = {
           title: undefined,
           acronym: undefined,
           projectId: undefined,
@@ -166,12 +172,12 @@ describe("config and context state", () => {
           initializeStore(configObject, contextObject)
         );
 
-        expect(result).toEqual(expectedResult);
+        expect(result).toEqual(EXPECTED_RESULT);
       });
 
       it("should initialize a standard titleStyle", () => {
         const initialState = {};
-        const expectedResult = {
+        const EXPECTED_RESULT = {
           title: "title",
           acronym: "acronym",
           projectId: "projectId",
@@ -191,13 +197,13 @@ describe("config and context state", () => {
           initializeStore(configObject, contextObject)
         );
 
-        expect(result).toEqual(expectedResult);
+        expect(result).toEqual(EXPECTED_RESULT);
       });
     });
 
     it("should initialize a null titleStyle", () => {
       const initialState = {};
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         title: "title",
         acronym: "acronym",
         projectId: "projectId",
@@ -218,12 +224,12 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should initialize an authorview streamgraph titleLabelType", () => {
       const initialState = {};
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         title: "title",
         acronym: "acronym",
         projectId: "projectId",
@@ -244,12 +250,12 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should initialize an authorview knowledgemap titleLabelType", () => {
       const initialState = {};
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         title: "title",
         acronym: "acronym",
         projectId: "projectId",
@@ -270,12 +276,12 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should initialize an keywordview streamgraph titleLabelType", () => {
       const initialState = {};
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         title: "title",
         acronym: "acronym",
         projectId: "projectId",
@@ -296,22 +302,22 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
   });
 
   describe("localization reducer", () => {
     it("should return the initial state", () => {
-      const expectedResult = {};
+      const EXPECTED_RESULT = {};
 
       const result = localizationReducer(undefined, {});
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should handle the initialization", () => {
       const initialState = {};
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         area: "Area",
         intro_icon: "++intro icon++",
         intro_label: "Some intro label",
@@ -330,60 +336,79 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
   });
 
   describe("query reducer", () => {
     it("should return the initial state", () => {
-      const expectedResult = null;
+      const EXPECTED_RESULT = { text: "", parsedTerms: [] };
 
       const result = queryReducer(undefined, {});
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should handle the initialization", () => {
       const initialState = null;
       const { configObject, contextObject } = setup();
-      const expectedResult = contextObject.query;
+      const EXPECTED_RESULT = contextObject.query;
 
       const result = queryReducer(
         initialState,
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result.text).toEqual(EXPECTED_RESULT);
     });
 
     it("should handle the initialization even without the query", () => {
       const initialState = null;
       const { configObject, contextObject } = setup();
       contextObject.query = undefined;
-      const expectedResult = null;
+      const EXPECTED_RESULT = null;
 
       const result = queryReducer(
         initialState,
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result.text).toEqual(EXPECTED_RESULT);
+    });
+
+    it("should parse the query phrases correctly", () => {
+      const initialState = null;
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          query: `"some phrase" cool`,
+        }
+      );
+
+      const EXPECTED_RESULT = ["some phrase", "cool"];
+
+      const result = queryReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result.parsedTerms).toEqual(EXPECTED_RESULT);
     });
   });
 
   describe("files reducer", () => {
     it("should return the initial state", () => {
-      const expectedResult = { current: 0, list: [] };
+      const EXPECTED_RESULT = { current: 0, list: [] };
 
       const result = filesReducer(undefined, {});
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should handle the initialization", () => {
       const initialState = { current: 0, list: [] };
       const { configObject, contextObject } = setup();
-      const expectedResult = {
+      const EXPECTED_RESULT = {
         current: 0,
         list: configObject.files,
       };
@@ -393,17 +418,17 @@ describe("config and context state", () => {
         initializeStore(configObject, contextObject)
       );
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
   });
 
   describe("context line reducer", () => {
     it("should return the initial state", () => {
-      const expectedResult = {};
+      const EXPECTED_RESULT = {};
 
       const result = contextLineReducer(undefined, {});
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(EXPECTED_RESULT);
     });
 
     it("should initialize show to true", () => {
@@ -707,7 +732,7 @@ describe("config and context state", () => {
           params: {
             author_id: 111,
             living_dates: "1620-1699",
-            image_link: "http://link.com/1234"
+            image_link: "http://link.com/1234",
           },
         }
       );
@@ -1011,6 +1036,33 @@ describe("config and context state", () => {
         },
         {
           params: {},
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("documentTypes", EXPECTED_VALUE);
+    });
+
+    // added for old PubMed maps: pubmed sometimes changes their source document ids
+    it("should not initialize certain document type if not supported anymore", () => {
+      const REAL_CONFIG_OPTIONS = `[{"id":"time_range","multiple":false,"name":"Time Range","type":"dropdown","fields":[{"id":"any-time","text":"Any time"},{"id":"last-month","text":"Last month"},{"id":"last-year","text":"Last year"},{"id":"user-defined","text":"Custom range","class":"user-defined","inputs":[{"id":"from","label":"From: ","class":"time_input"},{"id":"to","label":"To: ","class":"time_input"}]}]},{"id":"sorting","multiple":false,"name":"Sorting","type":"dropdown","fields":[{"id":"most-relevant","text":"Most relevant"},{"id":"most-recent","text":"Most recent"}]},{"id":"article_types","multiple":true,"width":"140px","name":"Article types","type":"dropdown","fields":[{"id":"adaptive clinical trial","text":"Adaptive Clinical Trial","selected":true},{"id":"address","text":"Address","selected":true},{"id":"autobiography","text":"Autobiography","selected":true},{"id":"bibliography","text":"Bibliography","selected":true},{"id":"biography","text":"Biography","selected":true},{"id":"book illustrations","text":"Book Illustrations","selected":true},{"id":"case reports","text":"Case Reports","selected":true},{"id":"classical article","text":"Classical Article","selected":true},{"id":"clinical conference","text":"Clinical Conference","selected":true},{"id":"clinical study","text":"Clinical Study","selected":true},{"id":"clinical trial","text":"Clinical Trial","selected":true},{"id":"clinical trial protocol","text":"Clinical Trial Protocol","selected":true},{"id":"clinical trial, phase i","text":"Clinical Trial, Phase I","selected":true},{"id":"clinical trial, phase ii","text":"Clinical Trial, Phase II","selected":true},{"id":"clinical trial, phase iii","text":"Clinical Trial, Phase III","selected":true},{"id":"clinical trial, phase iv","text":"Clinical Trial, Phase IV","selected":true},{"id":"clinical trial, veterinary","text":"Clinical Trial, Veterinary","selected":true},{"id":"collected work","text":"Collected Work","selected":true},{"id":"collected works","text":"Collected Works","selected":true},{"id":"comment","text":"Comment","selected":true},{"id":"comparative study","text":"Comparative Study","selected":true},{"id":"congress","text":"Congress","selected":true},{"id":"consensus development conference","text":"Consensus Development Conference","selected":true},{"id":"consensus development conference, nih","text":"Consensus Development Conference, NIH","selected":true},{"id":"controlled clinical trial","text":"Controlled Clinical Trial","selected":true},{"id":"corrected and republished article","text":"Corrected and Republished Article","selected":true},{"id":"dataset","text":"Dataset","selected":true},{"id":"dictionary","text":"Dictionary","selected":true},{"id":"directory","text":"Directory","selected":true},{"id":"duplicate publication","text":"Duplicate publication","selected":true},{"id":"editorial","text":"Editorial","selected":true},{"id":"electronic supplementary materials","text":"Electronic Supplementary Materials","selected":true},{"id":"english abstract","text":"English Abstract","selected":true},{"id":"ephemera","text":"Ephemera","selected":true},{"id":"equivalence trial","text":"Equivalence Trial","selected":true},{"id":"evaluation studies","text":"Evaluation Studies","selected":true},{"id":"evaluation study","text":"Evaluation Study","selected":true},{"id":"expression of concern","text":"Expression of Concern","selected":true},{"id":"festschrift","text":"Festschrift","selected":true},{"id":"government publication","text":"Government Publication","selected":true},{"id":"guideline","text":"Guideline","selected":true},{"id":"historical article","text":"Historical Article","selected":true},{"id":"interactive tutorial","text":"Interactive Tutorial","selected":true},{"id":"interview","text":"Interview","selected":true},{"id":"introductory journal article","text":"Introductory Journal Article","selected":true},{"id":"journal article","text":"Journal Article","selected":true},{"id":"lecture","text":"Lecture","selected":true},{"id":"legal case","text":"Legal Case","selected":true},{"id":"legislation","text":"Legislation","selected":true},{"id":"letter","text":"Letter","selected":true},{"id":"manuscript","text":"Manuscript","selected":true},{"id":"meta analysis","text":"Meta Analysis","selected":true},{"id":"multicenter study","text":"Multicenter Study","selected":true},{"id":"news","text":"News","selected":true},{"id":"newspaper article","text":"Newspaper Article","selected":true},{"id":"observational study","text":"Observational Study","selected":true},{"id":"observational study, veterinary","text":"Observational Study, Veterinary","selected":true},{"id":"overall","text":"Overall","selected":true},{"id":"patient education handout","text":"Patient Education Handout","selected":true},{"id":"periodical index","text":"Periodical Index","selected":true},{"id":"personal narrative","text":"Personal Narrative","selected":true},{"id":"pictorial work","text":"Pictorial Work","selected":true},{"id":"popular work","text":"Popular Work","selected":true},{"id":"portrait","text":"Portrait","selected":true},{"id":"practice guideline","text":"Practice Guideline","selected":true},{"id":"pragmatic clinical trial","text":"Pragmatic Clinical Trial","selected":true},{"id":"preprint","text":"Preprint","selected":true},{"id":"publication components","text":"Publication Components","selected":true},{"id":"publication formats","text":"Publication Formats","selected":true},{"id":"publication type category","text":"Publication Type Category","selected":true},{"id":"published erratum","text":"Published Erratum","selected":true},{"id":"randomized controlled trial","text":"Randomized Controlled Trial","selected":true},{"id":"randomized controlled trial, veterinary","text":"Randomized Controlled Trial, Veterinary","selected":true},{"id":"research support, american recovery and reinvestment act","text":"Research Support, American Recovery and Reinvestment Act","selected":true},{"id":"research support, n i h, extramural","text":"Research Support, NIH Extramural","selected":true},{"id":"research support, n i h, intramural","text":"Research Support, NIH Intramural","selected":true},{"id":"research support, non u s gov't","text":"Research Support, U.S. Gov't","selected":true},{"id":"research support, u s gov't, non p h s","text":"Research Support, U.S. Gov't, Non P.H.S","selected":true},{"id":"research support, u s gov't, p h s","text":"Research Support, U.S. Gov't, P.H.S","selected":true},{"id":"research support, u s government","text":"Research Support, U.S. Government","selected":true},{"id":"retracted publication","text":"Retracted Publication","selected":false},{"id":"retraction of publication","text":"Retraction of Publication","selected":true},{"id":"review","text":"Review","selected":true},{"id":"scientific integrity review","text":"Scientific Integrity Review","selected":true},{"id":"study characteristics","text":"Study Characteristics","selected":true},{"id":"support of research","text":"Support of Research","selected":true},{"id":"systematic review","text":"Systematic Review","selected":true},{"id":"technical report","text":"Technical Report","selected":true},{"id":"twin study","text":"Twin Study","selected":true},{"id":"validation study","text":"Validation Study","selected":true},{"id":"video audio media","text":"Video Audio Media","selected":true},{"id":"webcasts","text":"Webcasts","selected":true}]}]`;
+      // "addresses" not present in config options
+      const REAL_CONTEXT_ARTICLE_TYPES = `["addresses","autobiography","bibliography","biography"]`;
+      const EXPECTED_VALUE = ["Autobiography", "Bibliography", "Biography"];
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {
+          options: JSON.parse(REAL_CONFIG_OPTIONS),
+        },
+        {
+          params: {
+            article_types: JSON.parse(REAL_CONTEXT_ARTICLE_TYPES),
+          },
         }
       );
 
@@ -1441,6 +1493,420 @@ describe("config and context state", () => {
       );
 
       expect(result).toHaveProperty("timestamp", LAST_UPDATED);
+    });
+
+    it("should initialize null metadata quality (undefined min_descsize)", () => {
+      const SERVICE = "base";
+      const MIN_DESCSIZE = undefined;
+      const EXPECTED_QUALITY = null;
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+
+    it("should initialize null metadata quality (unsupported service)", () => {
+      const SERVICE = "doaj";
+      const MIN_DESCSIZE = "300";
+      const EXPECTED_QUALITY = null;
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+
+    it("should initialize correct (low) metadata quality (base, min_descsize = 0)", () => {
+      const SERVICE = "base";
+      const MIN_DESCSIZE = "0";
+      const EXPECTED_QUALITY = "low";
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+
+    it("should initialize correct (high) metadata quality (base, min_descsize = 300)", () => {
+      const SERVICE = "base";
+      const MIN_DESCSIZE = "300";
+      const EXPECTED_QUALITY = "high";
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+
+    it("should initialize correct (low) metadata quality (pubmed, min_descsize = 0)", () => {
+      const SERVICE = "pubmed";
+      const MIN_DESCSIZE = "0";
+      const EXPECTED_QUALITY = "low";
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+
+    it("should initialize correct (high) metadata quality (pubmed, min_descsize = 300)", () => {
+      const SERVICE = "pubmed";
+      const MIN_DESCSIZE = "1";
+      const EXPECTED_QUALITY = "high";
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+          params: {
+            min_descsize: MIN_DESCSIZE,
+          },
+        }
+      );
+
+      const result = contextLineReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("metadataQuality", EXPECTED_QUALITY);
+    });
+  });
+
+  describe("service reducer", () => {
+    it("should return the initial state", () => {
+      const EXPECTED_RESULT = null;
+
+      const result = serviceReducer(undefined, {});
+
+      expect(result).toEqual(EXPECTED_RESULT);
+    });
+
+    it("should initialize null service", () => {
+      const SERVICE = undefined;
+      const EXPECTED_SERVICE = null;
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+        }
+      );
+
+      const result = serviceReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toEqual(EXPECTED_SERVICE);
+    });
+
+    it("should initialize correct service", () => {
+      const SERVICE = "base";
+
+      const initialState = {};
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+        }
+      );
+
+      const result = serviceReducer(
+        initialState,
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toEqual(SERVICE);
+    });
+  });
+
+  describe("list reducer", () => {
+    // initial state tested in listtoggle.test.js
+
+    it("should initialize correct list visibility", () => {
+      const SHOW_LIST = false;
+
+      const { configObject, contextObject } = setup({
+        show_list: SHOW_LIST,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("show", SHOW_LIST);
+    });
+
+    it("should initialize correct filter visibility", () => {
+      const SHOW_FILTER = false;
+
+      const { configObject, contextObject } = setup({
+        filter_menu_dropdown: SHOW_FILTER,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("showFilter", SHOW_FILTER);
+    });
+
+    it("should initialize correct filter options and initial value", () => {
+      const FILTER_OPTIONS = ["all", "open_access"];
+
+      const { configObject, contextObject } = setup({
+        filter_options: FILTER_OPTIONS,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("filterOptions", FILTER_OPTIONS);
+      expect(result).toHaveProperty("filterValue", FILTER_OPTIONS[0]);
+    });
+
+    it("should initialize correct sort visibility", () => {
+      const SHOW_SORT = false;
+
+      const { configObject, contextObject } = setup({
+        sort_menu_dropdown: SHOW_SORT,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("showDropdownSort", SHOW_SORT);
+    });
+
+    it("should initialize correct sort options and initial value", () => {
+      const SORT_OPTIONS = ["relevance", "readers", "year"];
+
+      const { configObject, contextObject } = setup({
+        sort_options: SORT_OPTIONS,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("sortOptions", SORT_OPTIONS);
+      expect(result).toHaveProperty("sortValue", SORT_OPTIONS[0]);
+    });
+
+    it("should initialize correct initial value if pre-specified", () => {
+      const SORT_OPTIONS = ["relevance", "readers", "year"];
+      const INITIAL_SORT = "readers";
+
+      const { configObject, contextObject } = setup({
+        sort_options: SORT_OPTIONS,
+        initial_sort: INITIAL_SORT,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("sortValue", INITIAL_SORT);
+    });
+
+    it("should initialize covis link type", () => {
+      const SERVICE = "gsheets";
+      const EXPECTED_LINK_TYPE = "covis";
+      const { configObject, contextObject } = setup(
+        {},
+        {
+          service: SERVICE,
+        }
+      );
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("linkType", EXPECTED_LINK_TYPE);
+    });
+
+    it("should initialize doi link type", () => {
+      const DOI_OUTLINK = true;
+      const EXPECTED_LINK_TYPE = "doi";
+      const { configObject, contextObject } = setup({
+        doi_outlink: DOI_OUTLINK,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("linkType", EXPECTED_LINK_TYPE);
+    });
+
+    it("should initialize doi link type", () => {
+      const URL_OUTLINK = true;
+      const EXPECTED_LINK_TYPE = "url";
+      const { configObject, contextObject } = setup({
+        url_outlink: URL_OUTLINK,
+      });
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("linkType", EXPECTED_LINK_TYPE);
+    });
+
+    it("should initialize null link type", () => {
+      const SERVICE = "base";
+      const DOI_OUTLINK = false;
+      const URL_OUTLINK = false;
+      const EXPECTED_LINK_TYPE = null;
+      const { configObject, contextObject } = setup(
+        {
+          doi_outlink: DOI_OUTLINK,
+          url_outlink: URL_OUTLINK,
+        },
+        {
+          service: SERVICE,
+        }
+      );
+
+      const result = listReducer(
+        {},
+        initializeStore(configObject, contextObject)
+      );
+
+      expect(result).toHaveProperty("linkType", EXPECTED_LINK_TYPE);
+    });
+  });
+
+  describe("data reducer", () => {
+    it("should initialize correct data with the input data property missing", () => {
+      const mockWarn = jest.fn();
+
+      global.console = {
+        log: console.log,
+        warn: mockWarn,
+        error: console.error,
+        info: console.info,
+        debug: console.debug,
+      };
+
+      const { configObject, contextObject } = setup();
+
+      const result = dataReducer(
+        {},
+        initializeStore(configObject, contextObject, localData)
+      );
+
+      expect(result).toHaveProperty("length", localData.length);
+      expect(mockWarn).toHaveBeenCalled();
+    });
+
+    it("should initialize correct data with the input data property missing in all but one entry", () => {
+      const mockWarn = jest.fn();
+
+      const entry1 = Object.assign({}, localData[0]);
+      entry1.area_uri = "some-uri";
+      const entry2 = Object.assign({}, localData[1]);
+      delete entry2.area_uri;
+      const mockLocalData = [entry1, entry2];
+
+      global.console = {
+        log: console.log,
+        warn: mockWarn,
+        error: console.error,
+        info: console.info,
+        debug: console.debug,
+      };
+
+      const { configObject, contextObject } = setup();
+
+      const result = dataReducer(
+        {},
+        initializeStore(configObject, contextObject, mockLocalData)
+      );
+
+      expect(result).toHaveProperty("length", mockLocalData.length);
+      expect(mockWarn).toHaveBeenCalled();
     });
   });
 });

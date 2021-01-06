@@ -44,6 +44,7 @@ source('altmetrics.R')
 source('base.R')
 limit = 120
 list_size = 100
+.GlobalEnv$VIS_ID <- params$vis_id
 
 failed <- list(params=params)
 tryCatch({

@@ -49,7 +49,7 @@ const Heading = ({
 const mapStateToProps = (state) => ({
   localization: state.localization,
   zoomed: state.zoom,
-  query: state.query,
+  query: state.query.text,
   bubbleTitle: state.selectedBubble ? state.selectedBubble.title : null,
   headingParams: state.heading,
   files: state.files,
@@ -204,7 +204,6 @@ const unescapeHTML = (string) => {
 const renderAdditionalFeatures = ({ showDropdown }, files, onFileChange) => {
   if (showDropdown && files.list.length > 0) {
     const handleChange = (e) => {
-      console.warn("*** React component 'Heading' dropdown changed ***");
       onFileChange(parseInt(e.target.value));
     };
 

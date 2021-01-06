@@ -77,6 +77,7 @@ $("#searchform").validate({
 
 var doSubmit = function (data, newWindow, callback) {
   data += "&today=" + new Date().toLocaleDateString("en-US");
+  data += "&persistence_backend=" + data_config.persistence_backend;
   var params = $("#searchform").serializeArray().reduce(function(obj, item) {
     obj[item.name] = item.value;
     return obj;
@@ -106,16 +107,14 @@ var doSubmit = function (data, newWindow, callback) {
     if (data.status === "success") {
       var file = data.id;
       window.location =
-        "headstart.php?query=" +
-        data.query +
-        "&file=" +
-        file +
-        "&service=" +
-        data_config.service +
-        "&service_name=" +
-        service_name +
-        "&vis_type=" +
-        vis_type;
+        "headstart.php"
+        + "?query=" + encodeURIComponent(data.query)
+        + ((params.hasOwnProperty("language"))?("&lang=" + params.language):(""))
+        + ((params.hasOwnProperty("sg_method"))?("&algo=" + params.sg_method):(""))
+        + "&file=" + file
+        + "&service=" + data_config.service
+        + "&service_name=" +  service_name
+        + "&vis_type=" + vis_type;
       return false;
     } else {
       $("#progress").html(

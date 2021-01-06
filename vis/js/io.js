@@ -181,14 +181,17 @@ IO.prototype = {
         var num_oa = 0;
         var num_papers = 0;
         var num_datasets = 0;
+
+        const protectedAttrs = new Set(["paper_abstract", "authors_string"]);
+
         cur_data.forEach(function (d) {
-            
             //convert special entities to characters
             for (let field in d) {
                 if(typeof d[field] === "string") {
                     d[field] = $("<textarea/>").html(d[field]).val();
                 }
-           }
+            }
+
             // convert authors to "[first name] [last name]"
             // var authors = d.authors.split(";");
             var authors = _this.convertToFirstNameLastName(d.authors);
@@ -197,7 +200,7 @@ IO.prototype = {
             
             //replace "<" and ">" to avoid having HTML tags
             for (let field in d) {
-                if(typeof d[field] === "string") {
+                if(typeof d[field] === "string" && !protectedAttrs.has(field)) {
                     d[field] = d[field].replace(/</g, "&lt;");
                     d[field] = d[field].replace(/>/g, "&gt;");
                 }
@@ -367,7 +370,7 @@ IO.prototype = {
             
             if(config.highlight_query_terms) {
                 for (let field of config.highlight_query_fields) {
-                    d[field] = _this.highlightTerms(d[field], _this.query_terms);
+                    d[field + config.sort_field_exentsion] = d[field];
                 }
             }
 
@@ -376,9 +379,6 @@ IO.prototype = {
         this.num_oa = num_oa;
         this.num_papers = num_papers;
         this.num_datasets = num_datasets;
-
-        mediator.publish("update_canvas_domains", cur_data);
-        mediator.publish("update_canvas_data", cur_data);
         
         var areas = this.areas;
         cur_data.forEach(function (d) {
@@ -421,6 +421,12 @@ IO.prototype = {
         }
 
         this.data = cur_data;
+    },
+
+    updateVis: function() {
+        // from prepareData:
+        mediator.publish("update_canvas_domains", this.data);
+        mediator.publish("update_canvas_data", this.data);
     },
     
     createCommentStringForFiltering: function(comments) {
@@ -533,11 +539,7 @@ IO.prototype = {
 
         for (area in areas) {
             var new_area = [];
-            if(config.highlight_query_terms) {
-                new_area.title = _this.highlightTerms(areas[area].title, _this.query_terms);
-            } else {
-                new_area.title = areas[area].title;
-            }
+            new_area.title = areas[area].title;
             new_area.title_tooltip = areas[area].title;
             mediator.publish("set_new_area_coords", new_area, areas[area]);
             new_area.orig_x = areas[area].x;
